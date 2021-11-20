@@ -32,6 +32,10 @@ type Requisition struct {
 	Accounts   []string `json:"accounts"`
 }
 
+func unexpectedResponse(expected int, resp *http.Response) error {
+	return fmt.Errorf("expected %d status code: got %d %s", expected, resp.StatusCode, resp.Body)
+}
+
 func (c Client) CreateRequisition(r Requisition) (Requisition, error) {
 	req := http.Request{
 		Method: http.MethodPost,
@@ -58,7 +62,7 @@ func (c Client) CreateRequisition(r Requisition) (Requisition, error) {
 		return Requisition{}, err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return Requisition{}, fmt.Errorf("expected %d status code: got %d", http.StatusCreated, resp.StatusCode)
+		return Requisition{}, unexpectedResponse(http.StatusCreated, resp)
 	}
 	err = json.Unmarshal(body, &r)
 
@@ -88,7 +92,7 @@ func (c Client) GetRequisition(id string) (r Requisition, err error) {
 	}
 
 	if resp.StatusCode != http.StatusOK{
-		return Requisition{}, fmt.Errorf("expected %d status code: got %d", http.StatusOK, resp.StatusCode)
+		return Requisition{}, unexpectedResponse(http.StatusOK, resp)
 	}
 	err = json.Unmarshal(body, &r)
 
@@ -125,7 +129,7 @@ func (c Client) CreateRequisitionLink(referenceId string, rl RequisitionLinkRequ
 		return RequisitionLinkResponse{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return RequisitionLinkResponse{}, fmt.Errorf("expected %d status code: got %d %s", http.StatusOK, resp.StatusCode, resp.Body)
+		return RequisitionLinkResponse{}, unexpectedResponse(http.StatusOK, resp)
 	}
 	rr := RequisitionLinkResponse{}
 	err = json.Unmarshal(body, &rr)
