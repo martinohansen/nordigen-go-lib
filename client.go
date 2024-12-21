@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -20,11 +21,21 @@ type Client struct {
 
 	m     *sync.RWMutex
 	token *Token
+
+	// Name of the client, useful if you have multiple clients
+	name string
 }
 
 type Transport struct {
 	rt  http.RoundTripper
 	cli *Client
+}
+
+func (c Client) String() string {
+	if c.name == "" {
+		return "nordigen-go-lib" + "@" + baseUrl
+	}
+	return c.name + "@" + baseUrl
 }
 
 // StartTokenHandler handles token refreshes in the background
@@ -45,11 +56,14 @@ func (c *Client) StartTokenHandler(ctx context.Context) error {
 // tokenHandler gets a new token using the refresh token and a new pair when the
 // refresh token expires.
 func (c *Client) tokenHandler(ctx context.Context) {
+	logger := slog.With("client", c.String(), "method", "tokenHandler")
+
 	newTokenTimer := time.NewTimer(0)     // Start immediately
 	refreshTokenTimer := time.NewTimer(0) // Start immediately
 	defer func() {
 		newTokenTimer.Stop()
 		refreshTokenTimer.Stop()
+		logger.Debug("stopped")
 	}()
 
 	resetTimer := func(timer *time.Timer, expiryTime time.Time) {
@@ -59,6 +73,7 @@ func (c *Client) tokenHandler(ctx context.Context) {
 		timer.Reset(time.Until(expiryTime))
 	}
 
+	logger.Debug("starting")
 	for {
 		c.m.RLock()
 		newTokenExpiry := c.token.accessExpires(2)
@@ -66,18 +81,23 @@ func (c *Client) tokenHandler(ctx context.Context) {
 		c.m.RUnlock()
 
 		resetTimer(newTokenTimer, newTokenExpiry)
+		logger.Debug("new token timer", "expiry", newTokenExpiry)
 		resetTimer(refreshTokenTimer, refreshTokenExpiry)
+		logger.Debug("refresh token timer", "expiry", refreshTokenExpiry)
 
 		select {
 		case <-ctx.Done():
+			logger.Debug("context done")
 			return
 		case <-newTokenTimer.C:
+			logger.Debug("getting new token")
 			if token, err := c.newToken(ctx); err != nil {
 				panic(fmt.Sprintf("getting new token: %s", err))
 			} else {
 				c.updateToken(token)
 			}
 		case <-refreshTokenTimer.C:
+			logger.Debug("refreshing token")
 			if token, err := c.refreshToken(ctx); err != nil {
 				panic(fmt.Sprintf("refreshing token: %s", err))
 			} else {
