@@ -39,7 +39,7 @@ func (c Client) CreateEndUserAgreement(eua EndUserAgreement) (EndUserAgreement, 
 	}
 	req.Body = io.NopCloser(bytes.NewBuffer(data))
 
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return EndUserAgreement{}, err

@@ -52,7 +52,7 @@ func (c *Client) newToken(ctx context.Context) error {
 	}
 	req = req.WithContext(ctx)
 
-	resp, err := c.c.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (c *Client) refreshToken(ctx context.Context) error {
 	}
 	req = req.WithContext(ctx)
 
-	resp, err := c.c.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}

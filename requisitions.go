@@ -49,7 +49,7 @@ func (c Client) CreateRequisition(r Requisition) (Requisition, error) {
 	}
 	req.Body = io.NopCloser(bytes.NewBuffer(data))
 
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return Requisition{}, err
@@ -78,7 +78,7 @@ func (c Client) GetRequisition(id string) (r Requisition, err error) {
 			Path: strings.Join([]string{requisitionsPath, id, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return Requisition{}, err
@@ -128,7 +128,7 @@ func (c Client) fetchRequisitions(u *url.URL, allRequisitions *[]Requisition) er
 		URL:    u,
 	}
 
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,9 @@ package nordigen
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -71,4 +73,46 @@ func TestRefreshRefresh(t *testing.T) {
 		t.Fatalf("ListRequisitions: %s", err)
 	}
 	cancel() // Stop handler again
+}
+
+func TestRateLimitError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("HTTP_X_RATELIMIT_LIMIT", "10")
+		w.Header().Set("HTTP_X_RATELIMIT_REMAINING", "0")
+		w.Header().Set("HTTP_X_RATELIMIT_RESET", "5")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("rate limited"))
+	}))
+	defer ts.Close()
+
+	c := &Client{c: ts.Client()}
+	req, err := http.NewRequest(http.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Errorf("NewRequest: %v", err)
+	}
+
+	resp, err := c.do(req)
+	if err == nil {
+		t.Errorf("expected error")
+	}
+	if resp != nil {
+		t.Errorf("expected nil response")
+	}
+
+	rlErr, ok := err.(*RateLimitError)
+	if !ok {
+		t.Errorf("expected RateLimitError got %T", err)
+	}
+	if rlErr.RateLimit.Limit != 10 || rlErr.RateLimit.Remaining != 0 || rlErr.RateLimit.Reset != 5 {
+		t.Errorf("unexpected rate limit values: %+v", rlErr.RateLimit)
+	}
+
+	// Error should unwrap
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Errorf("expected APIError, got %T", err)
+	}
+	if !errors.Is(err, apiErr) {
+		t.Errorf("expected %v, got %v", apiErr, err)
+	}
 }
