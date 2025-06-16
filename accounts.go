@@ -93,7 +93,7 @@ func (c Client) GetAccountMetadata(id string) (AccountMetadata, error) {
 			Path: strings.Join([]string{accountPath, id, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return AccountMetadata{}, err
@@ -123,7 +123,7 @@ func (c Client) GetAccountBalances(id string) (AccountBalances, error) {
 			Path: strings.Join([]string{accountPath, id, balancesPath, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return AccountBalances{}, err
@@ -153,7 +153,7 @@ func (c Client) GetAccountDetails(id string) (AccountDetails, error) {
 			Path: strings.Join([]string{accountPath, id, detailsPath, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return AccountDetails{}, err
@@ -183,7 +183,7 @@ func (c Client) GetAccountTransactions(id string) (AccountTransactions, error) {
 			Path: strings.Join([]string{accountPath, id, transactionsPath, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return AccountTransactions{}, err

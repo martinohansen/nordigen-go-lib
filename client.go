@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -102,4 +104,56 @@ func NewClient(secretId, secretKey string) (*Client, error) {
 	}
 
 	return c, nil
+}
+
+// do sends the HTTP request and returns a RateLimitError when the response code
+// indicates that the request was throttled.
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		// We have been rate limited, parse the response and return a
+		// RateLimitError for the caller to handle.
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		rl := parseRateLimit(resp.Header)
+		return nil, &RateLimitError{APIError: &APIError{StatusCode: resp.StatusCode, Body: string(body)}, RateLimit: rl}
+	}
+
+	return resp, nil
+}
+
+// parseRateLimit extracts rate limit information from the HTTP headers
+// https://bankaccountdata.zendesk.com/hc/en-gb/articles/11529584398236-Bank-API-Rate-Limits-and-Rate-Limit-Headers
+func parseRateLimit(h http.Header) RateLimit {
+	toInt := func(v string) int {
+		i, _ := strconv.Atoi(v)
+		return i
+	}
+
+	rl := RateLimit{}
+
+	if v := h.Get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_LIMIT"); v != "" {
+		rl.Limit = toInt(v)
+	} else {
+		rl.Limit = toInt(h.Get("HTTP_X_RATELIMIT_LIMIT"))
+	}
+
+	if v := h.Get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_REMAINING"); v != "" {
+		rl.Remaining = toInt(v)
+	} else {
+		rl.Remaining = toInt(h.Get("HTTP_X_RATELIMIT_REMAINING"))
+	}
+
+	if v := h.Get("HTTP_X_RATELIMIT_ACCOUNT_SUCCESS_RESET"); v != "" {
+		rl.Reset = toInt(v)
+	} else {
+		rl.Reset = toInt(h.Get("HTTP_X_RATELIMIT_RESET"))
+	}
+
+	return rl
 }

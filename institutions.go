@@ -31,7 +31,7 @@ func (c Client) ListInstitutions(country string) ([]Institution, error) {
 	q.Add(countryParam, country)
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (c Client) GetInstitution(institutionID string) (Institution, error) {
 			Path: strings.Join([]string{institutionsPath, institutionID, ""}, "/"),
 		},
 	}
-	resp, err := c.c.Do(&req)
+	resp, err := c.do(&req)
 
 	if err != nil {
 		return Institution{}, err
